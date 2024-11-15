@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+model menu_items {
+  dish_id          Int             @id @default(autoincrement())
+  dish_name        String
+  dish_description String?
+  dish_live        Boolean?        @default(true)
+  dish_cost        Decimal
+  dish_images      dish_images[]   @relation(name: "menu_itemsTodish_images")
+  category_rel     categories?     @relation(name: "categoriesTomenu_items", fields: [category_id], references: [category_id])
+  category_id      Int?
+  restaurant_rel   restaurant_info @relation(name: "restaurant_infoTomenu_items", fields: [restaurant_id], references: [restaurant_id])
+  restaurant_id    Int
+}
+
+model dish_images {
+  image_id       Int              @id @default(autoincrement())
+  dish_image     String
+  menu_rel       menu_items?      @relation(name: "menu_itemsTodish_images", fields: [dish_id], references: [dish_id])
+  dish_id        Int?
+  restaurant_rel restaurant_info? @relation(name: "restaurant_infoTodish_images", fields: [restaurant_id], references: [restaurant_id])
+  restaurant_id  Int
+}
+
+model categories {
+  category_id    Int              @id @default(autoincrement())
+  category_name  String           @unique
+  menu_items     menu_items[]     @relation(name: "categoriesTomenu_items")
+  restaurant_rel restaurant_info? @relation(name: "restaurant_infoTocategories", fields: [restaurant_id], references: [restaurant_id])
+  restaurant_id  Int
+}
+
+model table_info {
+  table_no         Int              @id @default(autoincrement())
+  seating_capacity Int
+  order_table      order_table[]    @relation(name: "table_infoToorder_table")
+  payment_table    payment_table[]  @relation(name: "table_infoTopayment_table")
+  restaurant_rel   restaurant_info? @relation(name: "restaurant_infoTotable_info", fields: [restaurant_id], references: [restaurant_id])
+  restaurant_id    Int              
+}
+
+model order_table {
+  order_id       Int              @id @default(autoincrement())
+  table_rel      table_info       @relation(name: "table_infoToorder_table", fields: [table_no], references: [table_no])
+  table_no       Int
+  order_items    order_items[]    @relation(name: "order_tableToorder_items")
+  payment_table  payment_table?   @relation(name: "order_tableTopayment_table")
+  restaurant_rel restaurant_info? @relation(name: "restaurant_infoToorder_table", fields: [restaurant_id], references: [restaurant_id])
+  restaurant_id  Int
+}
+
+model order_items {
+  order_id       Int              
+  order_details Json[]
+  order_status  Int
+  restaurant_id  Int
+  restaurant_rel restaurant_info? @relation(name: "restaurant_infoToorder_items", fields: [restaurant_id], references: [restaurant_id])
+  order          order_table?     @relation(name: "order_tableToorder_items", fields: [order_id], references: [order_id])
+  @@id([order_id, order_status])
+}
+
+model payment_table {
+  order_id       Int              @id
+  tabel_reln     table_info?      @relation(name: "table_infoTopayment_table", fields: [table_no], references: [table_no])
+  table_no       Int?
+  order_tble_rln order_table      @relation(name: "order_tableTopayment_table", fields: [order_id], references: [order_id])
+  payment_type   String
+  amount         Decimal
+  timestamp      DateTime         @default(now())
+  restaurant_rel restaurant_info? @relation(name: "restaurant_infoTopayment_table", fields: [restaurant_id], references: [restaurant_id])
+  restaurant_id  Int
+}
+
+model restaurant_info {
+  restaurant_id Int             @id @default(autoincrement())
+  name          String
+  email         String          @unique
+  phone         String?
+  password      String
+  qr_code       String?
+  menu_items    menu_items[]    @relation(name: "restaurant_infoTomenu_items")
+  dish_images   dish_images[]   @relation(name: "restaurant_infoTodish_images")
+  categories    categories[]    @relation(name: "restaurant_infoTocategories")
+  order_items   order_items[]   @relation(name: "restaurant_infoToorder_items")
+  payment_table payment_table[] @relation(name: "restaurant_infoTopayment_table")
+  order_table   order_table[]   @relation(name: "restaurant_infoToorder_table")
+  table_info    table_info[]     @relation(name: "restaurant_infoTotable_info")
+}
