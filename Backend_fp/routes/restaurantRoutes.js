@@ -1,4 +1,4 @@
-const { createRestaurant, loginRestaurant, profile, menu, addDish } = require("../controllers/restaurantController");
+const { createRestaurant, loginRestaurant, profile, menu, addDish, category_dishes } = require("../controllers/restaurantController");
 const express = require("express");
 const authenticateRestaurant = require("../middlewares/authMiddleware");
 const router = express.Router();
@@ -9,4 +9,5 @@ router.post("/login",loginRestaurant);
 router.get("/profile",authenticateRestaurant, profile);
 router.get("/menu", authenticateRestaurant, menu);
 router.get("/add-dish", authenticateRestaurant, addDish);
+router.get("/categories/:id", authenticateRestaurant , category_dishes);
 module.exports = router;

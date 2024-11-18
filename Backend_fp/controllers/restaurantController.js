@@ -111,7 +111,7 @@ const profile = async (req, res) => {
 
 const menu = async (req, res) => {
   try {
-    const {restaurantId} = req.restaurant; // Extracted from the token by the `authenticateToken` middleware
+    const { restaurantId } = req.restaurant; // Extracted from the token by the `authenticateToken` middleware
     const menuItems = await prisma.menu_items.findMany({
       where: { restaurant_id: restaurantId },
     });
@@ -120,7 +120,6 @@ const menu = async (req, res) => {
     res.status(500).send("Error fetching menu items");
   }
 };
-
 
 const addDish = async (req, res) => {
   const { dish_name, dish_description, dish_cost, category_id } = req.body;
@@ -134,7 +133,6 @@ const addDish = async (req, res) => {
   }
 
   try {
-
     // Create new dish
     const newDish = await prisma.menu_items.create({
       data: {
@@ -155,5 +153,48 @@ const addDish = async (req, res) => {
   }
 };
 
+const category_dishes = async (req, res) => {
+  const { id } = req.params;
+  console.log(parseInt(id, 10));
+  const restaurantId = req.restaurant?.restaurantId;
+  try {
+    // Find the category to ensure it exists
+    const category = await prisma.categories.findUnique({
+      where: {
+        category_id: parseInt(id, 10),
+        restaurant_id: restaurantId,
+      },
+    });
 
-module.exports = { createRestaurant, loginRestaurant, profile, menu ,addDish};
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    // Retrieve all dishes associated with the category
+    const dishes = await prisma.menu_items.findMany({
+      where: {
+        category_id: parseInt(id, 10),
+        restaurant_id: restaurantId,
+      },
+      include: {
+        restaurant_rel: true, // Include related restaurant info if needed
+      },
+    });
+
+    res.status(200).json({ category: category.category_name, dishes });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+module.exports = {
+  createRestaurant,
+  loginRestaurant,
+  profile,
+  menu,
+  addDish,
+  category_dishes,
+};

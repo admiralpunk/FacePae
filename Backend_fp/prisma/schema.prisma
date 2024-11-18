@@ -23,7 +23,7 @@ model menu_items {
   dish_cost        Decimal
   dish_images      dish_images[]   @relation(name: "menu_itemsTodish_images")
   category_rel     categories?     @relation(name: "categoriesTomenu_items", fields: [category_id], references: [category_id])
-  category_id      Int?
+  category_id      Int
   restaurant_rel   restaurant_info @relation(name: "restaurant_infoTomenu_items", fields: [restaurant_id], references: [restaurant_id])
   restaurant_id    Int
 }
