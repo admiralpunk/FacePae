@@ -121,4 +121,39 @@ const menu = async (req, res) => {
   }
 };
 
-module.exports = { createRestaurant, loginRestaurant, profile, menu };
+
+const addDish = async (req, res) => {
+  const { dish_name, dish_description, dish_cost, category_id } = req.body;
+  const restaurantId = req.restaurant?.restaurantId; // Ensure optional chaining in case `req.restaurant` is undefined
+
+  // Validate input
+  if (!dish_name || !dish_cost || !restaurantId) {
+    return res
+      .status(400)
+      .json({ message: "Required fields: dish_name, dish_cost" });
+  }
+
+  try {
+
+    // Create new dish
+    const newDish = await prisma.menu_items.create({
+      data: {
+        dish_name,
+        dish_description,
+        dish_cost,
+        category_id,
+        restaurant_id: restaurantId,
+      },
+    });
+
+    res.status(201).json({ message: "Dish added successfully", dish: newDish });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+
+module.exports = { createRestaurant, loginRestaurant, profile, menu ,addDish};
