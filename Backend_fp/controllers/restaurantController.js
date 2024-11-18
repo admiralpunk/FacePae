@@ -1,4 +1,3 @@
-
 const prisma = require("../models/prismaClient");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -91,7 +90,7 @@ const loginRestaurant = async (req, res) => {
   }
 };
 
-const profile =  async (req, res) => {
+const profile = async (req, res) => {
   try {
     const { restaurantId } = req.restaurant; // Extracted from token
 
@@ -99,16 +98,27 @@ const profile =  async (req, res) => {
     const restaurant = await prisma.restaurant_info.findUnique({
       where: { restaurant_id: restaurantId },
     });
-
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found.' });
+      return res.status(404).json({ error: "Restaurant not found." });
     }
 
     res.status(200).json({ restaurant });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: "Internal server error." });
   }
 };
 
-module.exports = { createRestaurant, loginRestaurant ,profile};
+const menu = async (req, res) => {
+  try {
+    const {restaurantId} = req.restaurant; // Extracted from the token by the `authenticateToken` middleware
+    const menuItems = await prisma.menu_items.findMany({
+      where: { restaurant_id: restaurantId },
+    });
+    res.json(menuItems);
+  } catch (error) {
+    res.status(500).send("Error fetching menu items");
+  }
+};
+
+module.exports = { createRestaurant, loginRestaurant, profile, menu };
