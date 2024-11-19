@@ -155,7 +155,6 @@ const addDish = async (req, res) => {
 
 const category_dishes = async (req, res) => {
   const { id } = req.params;
-  console.log(parseInt(id, 10));
   const restaurantId = req.restaurant?.restaurantId;
   try {
     // Find the category to ensure it exists
@@ -190,6 +189,38 @@ const category_dishes = async (req, res) => {
   }
 };
 
+const postOrder =  async (req, res) => {
+  const { tableNo,  orderDetails } = req.body;
+   const restaurantId = req.restaurant?.restaurantId;
+  try {
+    // Create order in the order_table
+    const newOrder = await prisma.order_table.create({
+      data: {
+        table_no: tableNo,
+        restaurant_id: restaurantId,
+        order_items: {
+          create: {
+            order_details: orderDetails,
+            order_status: 0,
+            restaurant_id: restaurantId,
+          },
+        },
+      },
+      include: {
+        order_items: true,
+      },
+    });
+
+    res.status(201).json({
+      message: "Order created successfully",
+      order: newOrder,
+    });
+  } catch (error) {
+    console.error("Error creating order:", error);
+    res.status(500).json({ error: "Failed to create order" });
+  }
+};
+
 module.exports = {
   createRestaurant,
   loginRestaurant,
@@ -197,4 +228,5 @@ module.exports = {
   menu,
   addDish,
   category_dishes,
+  postOrder
 };
