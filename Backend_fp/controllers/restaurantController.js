@@ -122,7 +122,8 @@ const menu = async (req, res) => {
 };
 
 const addDish = async (req, res) => {
-  const { dish_name, dish_description, dish_cost, category_id } = req.body;
+  const { dish_name, dish_description, dish_cost, category_id, dish_image } =
+    req.body;
   const restaurantId = req.restaurant?.restaurantId; // Ensure optional chaining in case `req.restaurant` is undefined
 
   // Validate input
@@ -143,8 +144,17 @@ const addDish = async (req, res) => {
         restaurant_id: restaurantId,
       },
     });
+    if (dish_image) {
+      await prisma.dish_images.create({
+        data: {
+          dish_image,
+          dish_id: newDish.dish_id,
+          restaurant_id: restaurantId,
+        },
+      });
+    }
 
-    res.status(201).json({ message: "Dish added successfully", dish: newDish });
+    res.status(201).json({ message: "Dish added successfully", dish: newDish , image: dish_image});
   } catch (error) {
     console.error(error);
     res
@@ -189,9 +199,9 @@ const category_dishes = async (req, res) => {
   }
 };
 
-const postOrder =  async (req, res) => {
-  const { tableNo,  orderDetails } = req.body;
-   const restaurantId = req.restaurant?.restaurantId;
+const postOrder = async (req, res) => {
+  const { tableNo, orderDetails } = req.body;
+  const restaurantId = req.restaurant?.restaurantId;
   try {
     // Create order in the order_table
     const newOrder = await prisma.order_table.create({
@@ -221,6 +231,36 @@ const postOrder =  async (req, res) => {
   }
 };
 
+const payment = async (req, res) => {
+  try {
+    const { order_id, table_no, payment_type, amount, restaurant_id } =
+      req.body;
+
+    // Validate the required fields
+    if (!order_id || !payment_type || !amount || !restaurant_id) {
+      return res.status(400).json({ message: "Missing required fields!" });
+    }
+
+    const payment = await prisma.payment_table.create({
+      data: {
+        order_id,
+        table_no,
+        payment_type,
+        amount,
+        restaurant_id,
+        timestamp: new Date(),
+      },
+    });
+
+    return res
+      .status(201)
+      .json({ message: "Payment created successfully", payment });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error!" });
+  }
+};
+
 module.exports = {
   createRestaurant,
   loginRestaurant,
@@ -228,5 +268,6 @@ module.exports = {
   menu,
   addDish,
   category_dishes,
-  postOrder
+  postOrder,
+  payment,
 };

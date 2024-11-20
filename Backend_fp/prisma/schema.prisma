@@ -31,9 +31,9 @@ model menu_items {
 model dish_images {
   image_id       Int              @id @default(autoincrement())
   dish_image     String
-  menu_rel       menu_items?      @relation(name: "menu_itemsTodish_images", fields: [dish_id], references: [dish_id])
-  dish_id        Int?
-  restaurant_rel restaurant_info? @relation(name: "restaurant_infoTodish_images", fields: [restaurant_id], references: [restaurant_id])
+  menu_rel       menu_items      @relation(name: "menu_itemsTodish_images", fields: [dish_id], references: [dish_id])
+  dish_id        Int
+  restaurant_rel restaurant_info @relation(name: "restaurant_infoTodish_images", fields: [restaurant_id], references: [restaurant_id])
   restaurant_id  Int
 }
 
