@@ -30,7 +30,7 @@ model menu_items {
 
 model dish_images {
   image_id       Int              @id @default(autoincrement())
-  dish_image     String
+  dish_image     Bytes
   menu_rel       menu_items      @relation(name: "menu_itemsTodish_images", fields: [dish_id], references: [dish_id])
   dish_id        Int
   restaurant_rel restaurant_info @relation(name: "restaurant_infoTodish_images", fields: [restaurant_id], references: [restaurant_id])
@@ -45,14 +45,19 @@ model categories {
   restaurant_id  Int
 }
 
+
+
 model table_info {
   table_no         Int              @id @default(autoincrement())
+  table_name       String
   seating_capacity Int
   order_table      order_table[]    @relation(name: "table_infoToorder_table")
   payment_table    payment_table[]  @relation(name: "table_infoTopayment_table")
   restaurant_rel   restaurant_info? @relation(name: "restaurant_infoTotable_info", fields: [restaurant_id], references: [restaurant_id])
-  restaurant_id    Int              
+  restaurant_id    Int  
+  @@unique([table_name, restaurant_id])            
 }
+
 
 model order_table {
   order_id       Int              @id @default(autoincrement())
@@ -77,8 +82,8 @@ model order_items {
 
 model payment_table {
   order_id       Int              @id
-  tabel_reln     table_info?      @relation(name: "table_infoTopayment_table", fields: [table_no], references: [table_no])
-  table_no       Int?
+  tabel_reln     table_info      @relation(name: "table_infoTopayment_table", fields: [table_no], references: [table_no])
+  table_no       Int
   order_tble_rln order_table      @relation(name: "order_tableTopayment_table", fields: [order_id], references: [order_id])
   payment_type   String
   amount         Decimal

@@ -80,7 +80,7 @@ const loginRestaurant = async (req, res) => {
     const token = jwt.sign(
       { restaurantId: restaurant.restaurant_id, email: restaurant.email },
       SECRET_KEY,
-      { expiresIn: "1h" }
+      { expiresIn: "5h" }
     );
 
     res.status(200).json({ message: "Login successful", token });
@@ -98,11 +98,19 @@ const profile = async (req, res) => {
     const restaurant = await prisma.restaurant_info.findUnique({
       where: { restaurant_id: restaurantId },
     });
+
+
+    const tables = await prisma.table_info.findMany({
+      where: { restaurant_id: restaurantId },
+      // select: { table_name: true },
+    });
+
+    
     if (!restaurant) {
       return res.status(404).json({ error: "Restaurant not found." });
     }
 
-    res.status(200).json({ restaurant });
+    res.status(200).json({ restaurant, tables });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error." });
@@ -140,21 +148,27 @@ const addDish = async (req, res) => {
         dish_name,
         dish_description,
         dish_cost,
-        category_id,
+        category_id: parseInt(category_id),
         restaurant_id: restaurantId,
       },
     });
-    if (dish_image) {
+    // if (dish_image) {
       await prisma.dish_images.create({
         data: {
-          dish_image,
+          dish_image: req.file.buffer,
           dish_id: newDish.dish_id,
           restaurant_id: restaurantId,
         },
       });
-    }
+    // }
 
-    res.status(201).json({ message: "Dish added successfully", dish: newDish , image: dish_image});
+    res
+      .status(201)
+      .json({
+        message: "Dish added successfully",
+        dish: newDish,
+        image: dish_image,
+      });
   } catch (error) {
     console.error(error);
     res
@@ -198,7 +212,31 @@ const category_dishes = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+const getImage = async (req, res) => {
+  const { imageId } = req.params;
+  try {
+    const image = await prisma.dish_images.findUnique({
+      where: { image_id: parseInt(imageId, 10) },
+    });
+    // if (!image) {
+    //   return res.status(404).json({ message: "Image not found" });
+    // }
+    // res.status(200).json({ image: image.dish_image });
 
+
+    if (image && image.dish_image) {
+      res.set("Content-Type", "image/jpeg"); // Ensure the Content-Type matches the image format
+      res.send(image.dish_image); // Send raw binary image data
+    } else {
+      res.status(404).json({ message: "Image not found" });
+    }
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+}
 const postOrder = async (req, res) => {
   const { tableNo, orderDetails } = req.body;
   const restaurantId = req.restaurant?.restaurantId;
@@ -270,4 +308,5 @@ module.exports = {
   category_dishes,
   postOrder,
   payment,
+  getImage
 };
