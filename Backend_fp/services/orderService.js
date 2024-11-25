@@ -46,7 +46,7 @@ async function mergeOrder(order_no, status, order_id, order_details) {
     await prisma.order_items.updateMany({
       where: {
         order_id: parseInt(order_id),
-        order_status: status,
+        order_status: status, 
       },
       data: {
         order_details: updatedOrderDetails,

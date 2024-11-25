@@ -216,7 +216,7 @@ const getImage = async (req, res) => {
   const { imageId } = req.params;
   try {
     const image = await prisma.dish_images.findUnique({
-      where: { image_id: parseInt(imageId, 10) },
+      where: { image_id: parseInt(imageId, 10) ,restaurant_id: req.restaurant.restaurantId},
     });
     // if (!image) {
     //   return res.status(404).json({ message: "Image not found" });
@@ -269,16 +269,151 @@ const postOrder = async (req, res) => {
   }
 };
 
-const payment = async (req, res) => {
-  try {
-    const { order_id, table_no, payment_type, amount, restaurant_id } =
-      req.body;
+// const payment = async (req, res) => {
+//   try {
+//     const { order_id, table_no, payment_type, amount, restaurant_id } =
+//       req.body;
 
-    // Validate the required fields
-    if (!order_id || !payment_type || !amount || !restaurant_id) {
-      return res.status(400).json({ message: "Missing required fields!" });
+//     // Validate the required fields
+//     if (!order_id || !payment_type || !amount || !restaurant_id) {
+//       return res.status(400).json({ message: "Missing required fields!" });
+//     }
+
+//     const payment = await prisma.payment_table.create({
+//       data: {
+//         order_id,
+//         table_no,
+//         payment_type,
+//         amount,
+//         restaurant_id,
+//         timestamp: new Date(),
+//       },
+//     });
+
+//     return res
+//       .status(201)
+//       .json({ message: "Payment created successfully", payment });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ message: "Internal server error!" });
+//   }
+// };
+
+const getTable = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const tableNo = await prisma.order_table.findUnique({
+      where: { order_id : parseInt(orderId, 10) ,restaurant_id: req.restaurant.restaurantId},
+      select: { table_no: true },
+    });
+    if (!tableNo) {
+      return res.status(404).json({ message: "Table not found" });
     }
 
+    const tableName = await prisma.table_info.findUnique({
+      where: { table_no: tableNo.table_no ,restaurant_id: req.restaurant.restaurantId},
+      select: { table_name: true },
+    })
+    res.status(200).json({ tableName });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+}
+const addTable = async (req, res) => {
+  try {
+    const { table_name ,seating_capacity} = req.body;
+    const restaurantId = req.restaurant?.restaurantId;
+    const newTable = await prisma.table_info.create({
+      data: {
+        table_name,
+        restaurant_id: restaurantId,
+        seating_capacity : (seating_capacity || 4)
+      },
+    });
+    res
+      .status(201)
+      .json({ message: "Table added successfully", table: newTable });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+}
+
+const getDish = async (req, res) => {
+  try {
+    const { dishId } = req.params;
+    const dish = await prisma.menu_items.findUnique({
+      where: { dish_id: parseInt(dishId, 10), restaurant_id: req.restaurant.restaurantId },
+    });
+    if (!dish) {
+      return res.status(404).json({ message: "Dish not found" });
+    }
+    res.status(200).json({ dish });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+}
+
+const getOrder = async (req, res) => {
+  const { orderNo } = req.params;
+
+  try {
+    // Fetch the order and its items
+    const order = await prisma.order_items.findMany({
+      where: { order_no: parseInt(orderNo) },
+      select: {
+        order_details: true, // JSON array
+      },
+    });
+
+    if (order.length === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Parse `order_details` to get each dish_id, quantity, and customization
+    const orderDetails = order.flatMap((o) => o.order_details);
+
+    const dishDetails = await Promise.all(
+      orderDetails.map(async (item) => {
+        const dish = await prisma.menu_items.findUnique({
+          where: { dish_id: item.dish_id },
+          select: { dish_name: true },
+        });
+
+        return {
+          dish_name: dish?.dish_name || "Unknown dish",
+          quantity: item.quantity,
+          customization: item.customization || null,
+        };
+      })
+    );
+
+    res.json(dishDetails);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const pay = async (req, res) => {
+  const { order_id, order_no, table_no, payment_type, amount, restaurant_id } =
+    req.body;
+
+  // Validate the request body
+  if (!order_id || !table_no || !payment_type || !amount || !restaurant_id) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  try {
+    // Create a new payment record
     const payment = await prisma.payment_table.create({
       data: {
         order_id,
@@ -286,19 +421,23 @@ const payment = async (req, res) => {
         payment_type,
         amount,
         restaurant_id,
-        timestamp: new Date(),
       },
     });
 
-    return res
-      .status(201)
-      .json({ message: "Payment created successfully", payment });
+    await prisma.order_items.updateMany({
+      where: { order_no: order_no },
+      data: { order_status: 2 },
+    });
+
+    res.status(201).json({
+      message: "Payment record added successfully",
+      payment,
+    });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Internal server error!" });
+    res.status(500).json({ error: "Internal server error" });
   }
 };
-
 module.exports = {
   createRestaurant,
   loginRestaurant,
@@ -307,6 +446,10 @@ module.exports = {
   addDish,
   category_dishes,
   postOrder,
-  payment,
-  getImage
+  getImage,
+  getTable,
+  addTable,
+  getDish,
+  getOrder,
+  pay
 };
