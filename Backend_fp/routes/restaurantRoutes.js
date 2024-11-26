@@ -24,7 +24,7 @@ router.post("/create-restaurant", createRestaurant);
 router.post("/login", loginRestaurant);
 // Get restaurant info
 router.get("/profile", authenticateRestaurant, profile);
-router.get("/menu", authenticateRestaurant, menu);
+router.get("/menu",  menu);
 router.post(
   "/add-dish",
   authenticateRestaurant,

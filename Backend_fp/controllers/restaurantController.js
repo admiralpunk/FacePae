@@ -119,12 +119,29 @@ const profile = async (req, res) => {
 
 const menu = async (req, res) => {
   try {
-    const { restaurantId } = req.restaurant; // Extracted from the token by the `authenticateToken` middleware
+    const { restaurantId } = req; // Extracted from the token by the authenticateToken middleware
+    // Fetch menu items with associated dish images
     const menuItems = await prisma.menu_items.findMany({
       where: { restaurant_id: restaurantId },
+      include: {
+        dish_images: true, // Include dish images
+      },
     });
-    res.json(menuItems);
+
+    // Transform the response to include images as base64
+    const menuWithImages = menuItems.map((item) => ({
+      ...item,
+      dish_images: item.dish_images.map((image) => ({
+        ...image,
+        dish_image: image.dish_image.toString("base64"), // Convert image bytes to base64
+      })),
+    }));
+
+    // Set content type and return response
+    res.setHeader("Content-Type", "application/json");
+    res.json(menuWithImages);
   } catch (error) {
+    console.error("Error fetching menu items:", error);
     res.status(500).send("Error fetching menu items");
   }
 };
