@@ -15,7 +15,7 @@ const App = () => {
 
   // Hardcoded JWT Token
   const jwtToken =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXN0YXVyYW50SWQiOjExLCJlbWFpbCI6InRlc3RfYmNyeXB0IiwiaWF0IjoxNzMyNTMzOTg0LCJleHAiOjE3MzI1NTE5ODR9.oa6DbITV3w3HUEDzuseF2dmL4fTzDLdug3C9frvGyXs";
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXN0YXVyYW50SWQiOjE3LCJlbWFpbCI6InJAZy5pbiIsImlhdCI6MTczMjcxNzMxOSwiZXhwIjoxNzMyNzM1MzE5fQ.8CiG_QcfhN9w64pAHl2VREGemu_UAgf0Jf-kN4rR6rk";
 
   // Upload a new dish
   const handleAddDish = async () => {
