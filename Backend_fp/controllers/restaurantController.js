@@ -99,13 +99,11 @@ const profile = async (req, res) => {
       where: { restaurant_id: restaurantId },
     });
 
-
     const tables = await prisma.table_info.findMany({
       where: { restaurant_id: restaurantId },
       // select: { table_name: true },
     });
 
-    
     if (!restaurant) {
       return res.status(404).json({ error: "Restaurant not found." });
     }
@@ -119,7 +117,7 @@ const profile = async (req, res) => {
 
 const menu = async (req, res) => {
   try {
-    const { restaurantId } = req; // Extracted from the token by the authenticateToken middleware
+    const { restaurantId } = req.body;
     // Fetch menu items with associated dish images
     const menuItems = await prisma.menu_items.findMany({
       where: { restaurant_id: restaurantId },
@@ -170,22 +168,20 @@ const addDish = async (req, res) => {
       },
     });
     // if (dish_image) {
-      await prisma.dish_images.create({
-        data: {
-          dish_image: req.file.buffer,
-          dish_id: newDish.dish_id,
-          restaurant_id: restaurantId,
-        },
-      });
+    await prisma.dish_images.create({
+      data: {
+        dish_image: req.file.buffer,
+        dish_id: newDish.dish_id,
+        restaurant_id: restaurantId,
+      },
+    });
     // }
 
-    res
-      .status(201)
-      .json({
-        message: "Dish added successfully",
-        dish: newDish,
-        image: dish_image,
-      });
+    res.status(201).json({
+      message: "Dish added successfully",
+      dish: newDish,
+      image: dish_image,
+    });
   } catch (error) {
     console.error(error);
     res
@@ -233,13 +229,15 @@ const getImage = async (req, res) => {
   const { imageId } = req.params;
   try {
     const image = await prisma.dish_images.findUnique({
-      where: { image_id: parseInt(imageId, 10) ,restaurant_id: req.restaurant.restaurantId},
+      where: {
+        image_id: parseInt(imageId, 10),
+        restaurant_id: req.restaurant.restaurantId,
+      },
     });
     // if (!image) {
     //   return res.status(404).json({ message: "Image not found" });
     // }
     // res.status(200).json({ image: image.dish_image });
-
 
     if (image && image.dish_image) {
       res.set("Content-Type", "image/jpeg"); // Ensure the Content-Type matches the image format
@@ -253,10 +251,9 @@ const getImage = async (req, res) => {
       .status(500)
       .json({ message: "Internal Server Error", error: error.message });
   }
-}
+};
 const postOrder = async (req, res) => {
-  const { tableNo, orderDetails } = req.body;
-  const restaurantId = req.restaurant?.restaurantId;
+  const { tableNo, orderDetails, restaurantId } = req.body;
   try {
     // Create order in the order_table
     const newOrder = await prisma.order_table.create({
@@ -286,6 +283,36 @@ const postOrder = async (req, res) => {
   }
 };
 
+const updateOrder = async (req, res) => {
+  const { tableNo, orderDetails, restaurantId } = req.body; // Get the order ID from the request body
+  try {
+    const orderId = await prisma.order_table.findFirst({
+      where: { table_no: tableNo ,restaurant_id: parseInt(restaurantId) },
+      orderBy: {
+        order_id: "desc",
+      }
+    });
+    if(!orderId) 
+      return res.status(404).json({ message: "Table not found" });
+   const newOrder = await prisma.order_items.create({
+     data: {
+        order_details: orderDetails,
+        order_status: 0,
+        restaurant_id: parseInt(restaurantId),
+        order_id: parseInt(orderId.order_id)
+      },
+      
+    });
+    res
+      .status(200)
+      .json({ message: "new updated order has been added.", order: newOrder });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
 // const payment = async (req, res) => {
 //   try {
 //     const { order_id, table_no, payment_type, amount, restaurant_id } =
@@ -320,7 +347,10 @@ const getTable = async (req, res) => {
   try {
     const { orderId } = req.params;
     const tableNo = await prisma.order_table.findUnique({
-      where: { order_id : parseInt(orderId, 10) ,restaurant_id: req.restaurant.restaurantId},
+      where: {
+        order_id: parseInt(orderId, 10),
+        restaurant_id: req.restaurant.restaurantId,
+      },
       select: { table_no: true },
     });
     if (!tableNo) {
@@ -328,9 +358,12 @@ const getTable = async (req, res) => {
     }
 
     const tableName = await prisma.table_info.findUnique({
-      where: { table_no: tableNo.table_no ,restaurant_id: req.restaurant.restaurantId},
+      where: {
+        table_no: tableNo.table_no,
+        restaurant_id: req.restaurant.restaurantId,
+      },
       select: { table_name: true },
-    })
+    });
     res.status(200).json({ tableName });
   } catch (error) {
     console.error(error);
@@ -338,16 +371,16 @@ const getTable = async (req, res) => {
       .status(500)
       .json({ message: "Internal Server Error", error: error.message });
   }
-}
+};
 const addTable = async (req, res) => {
   try {
-    const { table_name ,seating_capacity} = req.body;
+    const { table_name, seating_capacity } = req.body;
     const restaurantId = req.restaurant?.restaurantId;
     const newTable = await prisma.table_info.create({
       data: {
         table_name,
         restaurant_id: restaurantId,
-        seating_capacity : (seating_capacity || 4)
+        seating_capacity: seating_capacity || 4,
       },
     });
     res
@@ -359,13 +392,16 @@ const addTable = async (req, res) => {
       .status(500)
       .json({ message: "Internal Server Error", error: error.message });
   }
-}
+};
 
 const getDish = async (req, res) => {
   try {
     const { dishId } = req.params;
     const dish = await prisma.menu_items.findUnique({
-      where: { dish_id: parseInt(dishId, 10), restaurant_id: req.restaurant.restaurantId },
+      where: {
+        dish_id: parseInt(dishId, 10),
+        restaurant_id: req.restaurant.restaurantId,
+      },
     });
     if (!dish) {
       return res.status(404).json({ message: "Dish not found" });
@@ -377,7 +413,7 @@ const getDish = async (req, res) => {
       .status(500)
       .json({ message: "Internal Server Error", error: error.message });
   }
-}
+};
 
 const getOrder = async (req, res) => {
   const { orderNo } = req.params;
@@ -468,5 +504,6 @@ module.exports = {
   addTable,
   getDish,
   getOrder,
-  pay
+  pay,
+  updateOrder
 };
