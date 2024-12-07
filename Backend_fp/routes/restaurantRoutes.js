@@ -16,6 +16,8 @@ const {
   getOrder,
   pay,
   updateOrder,
+  handleOrder,
+  postQR
 } = require("../controllers/restaurantController");
 const express = require("express");
 const authenticateRestaurant = require("../middlewares/authMiddleware");
@@ -33,7 +35,7 @@ router.post(
   addDish
 );
 router.get("/categories/:id", authenticateRestaurant, category_dishes);
-router.post("/post-order", postOrder);
+router.post("/post-order", handleOrder);
 router.post("/update-order", updateOrder);
 router.get("/image/:imageId", authenticateRestaurant, getImage);
 router.get("/table/:orderId", authenticateRestaurant, getTable);
@@ -41,5 +43,6 @@ router.post("/addTable", authenticateRestaurant, addTable);
 router.get("/dish/:dishId", authenticateRestaurant, getDish);
 router.get("/order/:orderNo", authenticateRestaurant, getOrder);
 router.post("/payment", authenticateRestaurant, pay);
+router.post("/qr", authenticateRestaurant, upload.single("image"), postQR);
 
 module.exports = router;

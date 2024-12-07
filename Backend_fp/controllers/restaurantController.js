@@ -282,26 +282,90 @@ const postOrder = async (req, res) => {
     res.status(500).json({ error: "Failed to create order" });
   }
 };
+const handleOrder = async (req, res) => {
+  const { tableNo, orderDetails, restaurantId } = req.body;
+
+  try {
+    // Check if an existing order exists with order_status 0 or 1
+    const existingOrder = await prisma.order_table.findFirst({
+      where: {
+        table_no: tableNo,
+        restaurant_id: parseInt(restaurantId),
+        order_items: {
+          some: {
+            order_status: {
+              in: [0, 1], // Check for status 0 or 1
+            },
+          },
+        },
+      },
+      orderBy: { order_id: "desc" },
+    });
+
+    if (!existingOrder) {
+      // Create a new order if no valid existing order is found
+      const newOrder = await prisma.order_table.create({
+        data: {
+          table_no: tableNo,
+          restaurant_id: parseInt(restaurantId),
+          order_items: {
+            create: {
+              order_details: orderDetails,
+              order_status: 0,
+              restaurant_id: parseInt(restaurantId),
+            },
+          },
+        },
+        include: {
+          order_items: true,
+        },
+      });
+
+      return res.status(201).json({
+        message: "Order created successfully",
+        order: newOrder,
+      });
+    }
+
+    // Add new order items to the existing order
+    const updatedOrder = await prisma.order_items.create({
+      data: {
+        order_details: orderDetails,
+        order_status: 0,
+        restaurant_id: parseInt(restaurantId),
+        order_id: existingOrder.order_id,
+      },
+    });
+
+    res.status(200).json({
+      message: "New order item added successfully",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Error handling order:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
 
 const updateOrder = async (req, res) => {
   const { tableNo, orderDetails, restaurantId } = req.body; // Get the order ID from the request body
   try {
     const orderId = await prisma.order_table.findFirst({
-      where: { table_no: tableNo ,restaurant_id: parseInt(restaurantId) },
+      where: { table_no: tableNo, restaurant_id: parseInt(restaurantId) },
       orderBy: {
         order_id: "desc",
-      }
+      },
     });
-    if(!orderId) 
-      return res.status(404).json({ message: "Table not found" });
-   const newOrder = await prisma.order_items.create({
-     data: {
+    if (!orderId) return res.status(404).json({ message: "Table not found" });
+    const newOrder = await prisma.order_items.create({
+      data: {
         order_details: orderDetails,
         order_status: 0,
         restaurant_id: parseInt(restaurantId),
-        order_id: parseInt(orderId.order_id)
+        order_id: parseInt(orderId.order_id),
       },
-      
     });
     res
       .status(200)
@@ -437,7 +501,7 @@ const getOrder = async (req, res) => {
     const dishDetails = await Promise.all(
       orderDetails.map(async (item) => {
         const dish = await prisma.menu_items.findUnique({
-          where: { dish_id: item.dish_id },
+          where: { dish_id: parseInt(item.dish_id) },
           select: { dish_name: true },
         });
 
@@ -456,6 +520,21 @@ const getOrder = async (req, res) => {
   }
 };
 
+const postQR = async (req, res) => {
+  const { restaurantId } = req.restaurant;
+  try {
+    await prisma.restaurant_info.update({
+      where: { restaurant_id: restaurantId },
+      data: {
+        qr_image : req.file.buffer,
+      },
+    });
+    res.status(200).json({ message: "QR Code added successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
 const pay = async (req, res) => {
   const { order_id, order_no, table_no, payment_type, amount, restaurant_id } =
     req.body;
@@ -505,5 +584,7 @@ module.exports = {
   getDish,
   getOrder,
   pay,
-  updateOrder
+  updateOrder,
+  handleOrder,
+  postQR
 };
