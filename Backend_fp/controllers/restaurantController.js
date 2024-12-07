@@ -529,6 +529,7 @@ const postQR = async (req, res) => {
         qr_code: req.file.buffer,
       },
     });
+    res.setHeader("Content-Type", "application/json");
     res.status(200).json({ message: "QR Code added successfully" });
   } catch (error) {
     console.error(error);
@@ -570,6 +571,22 @@ const pay = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+const getQr = async (req, res) => {
+  const { restaurantId } = req.restaurant;
+  try {
+    const qrCode = await prisma.restaurant_info.findUnique({
+      where: { restaurant_id: restaurantId },
+      select: { qr_code: true },
+    });
+    if (!qrCode) {
+      return res.status(404).json({ message: "QR code not found" });
+    }
+    res.status(200).json({ qrCode });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+}
 module.exports = {
   createRestaurant,
   loginRestaurant,
