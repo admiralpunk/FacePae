@@ -98,7 +98,7 @@ model restaurant_info {
   email         String          @unique
   phone         String?
   password      String
-  qr_code       String?
+  qr_code       Bytes?
   menu_items    menu_items[]    @relation(name: "restaurant_infoTomenu_items")
   dish_images   dish_images[]   @relation(name: "restaurant_infoTodish_images")
   categories    categories[]    @relation(name: "restaurant_infoTocategories")

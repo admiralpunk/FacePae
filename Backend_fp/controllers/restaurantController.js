@@ -526,7 +526,7 @@ const postQR = async (req, res) => {
     await prisma.restaurant_info.update({
       where: { restaurant_id: restaurantId },
       data: {
-        qr_image : req.file.buffer,
+        qr_code: req.file.buffer,
       },
     });
     res.status(200).json({ message: "QR Code added successfully" });
