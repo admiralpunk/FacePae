@@ -19,7 +19,8 @@ const {
   handleOrder,
   postQR,
   getOrderId,
-  getQr
+  getQr,
+  toggle_live
 } = require("../controllers/restaurantController");
 const express = require("express");
 const authenticateRestaurant = require("../middlewares/authMiddleware");
@@ -48,4 +49,5 @@ router.post("/payment", authenticateRestaurant, pay);
 router.post("/qr", authenticateRestaurant, upload.single("image"), postQR);
 router.get("/orderid/:table_no", getOrderId);
 router.get("/qr/:restaurantId", getQr);
+router.post("/live",authenticateRestaurant, toggle_live);
 module.exports = router;

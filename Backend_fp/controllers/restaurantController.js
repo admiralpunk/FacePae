@@ -609,6 +609,26 @@ const getOrderId = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 }
+
+const toggle_live = async (req, res) => {
+  try{
+    const { restaurantId, dish_id ,live} = req.body;
+    await prisma.menu_items.update({
+      where: {
+        dish_id: parseInt(dish_id),
+        restaurant_id: parseInt(restaurantId),
+      },
+      data: { dish_live: live },
+    });
+    res.status(200).json({ message: "Dish live status updated successfully" });
+  }
+  catch(error){
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+}
 module.exports = {
   createRestaurant,
   loginRestaurant,
@@ -627,5 +647,6 @@ module.exports = {
   handleOrder,
   postQR,
   getOrderId,
-  getQr
+  getQr,
+  toggle_live
 };
