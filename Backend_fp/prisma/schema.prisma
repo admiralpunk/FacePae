@@ -31,7 +31,7 @@ model menu_items {
 model dish_images {
   image_id       Int              @id @default(autoincrement())
   dish_image     Bytes
-  menu_rel       menu_items      @relation(name: "menu_itemsTodish_images", fields: [dish_id], references: [dish_id])
+  menu_rel       menu_items?      @relation(name: "menu_itemsTodish_images", fields: [dish_id], references: [dish_id])
   dish_id        Int
   restaurant_rel restaurant_info @relation(name: "restaurant_infoTodish_images", fields: [restaurant_id], references: [restaurant_id])
   restaurant_id  Int
@@ -75,6 +75,7 @@ model order_items {
   order_details Json[]
   order_status  Int
   restaurant_id  Int
+  timestamp DateTime @default(now()) @db.Timestamp(0)
   restaurant_rel restaurant_info? @relation(name: "restaurant_infoToorder_items", fields: [restaurant_id], references: [restaurant_id])
   order          order_table?     @relation(name: "order_tableToorder_items", fields: [order_id], references: [order_id])
   @@id([order_id, order_no])

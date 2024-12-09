@@ -1,5 +1,6 @@
 const prisma = require("../models/prismaClient");
 const bcrypt = require("bcrypt");
+const { parse } = require("dotenv");
 const jwt = require("jsonwebtoken");
 
 const SECRET_KEY = process.env.SECRET_KEY || "your_secret_key_here"; // Secure your key in .env
@@ -572,19 +573,40 @@ const pay = async (req, res) => {
   }
 };
 const getQr = async (req, res) => {
-  const { restaurantId } = req.restaurant;
+  const { restaurantId } = req.params;
   try {
     const qrCode = await prisma.restaurant_info.findUnique({
-      where: { restaurant_id: restaurantId },
+      where: { restaurant_id: parseInt(restaurantId) },
       select: { qr_code: true },
     });
     if (!qrCode) {
       return res.status(404).json({ message: "QR code not found" });
     }
-    res.status(200).json({ qrCode });
+    res.setHeader("Content-Type", "application/json");
+    res.status(200).json(qrCode);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+}
+
+const getOrderId = async (req, res) => {
+  try {
+    const { table_no } = req.params;
+    const order = await prisma.order_table.findFirst({
+      where: { table_no: parseInt(table_no) },
+      select: { order_no: true },
+      orderBy: { order_id: "desc" }
+    });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    res.status(200).json({ order });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 }
 module.exports = {
@@ -603,5 +625,7 @@ module.exports = {
   pay,
   updateOrder,
   handleOrder,
-  postQR
+  postQR,
+  getOrderId,
+  getQr
 };
