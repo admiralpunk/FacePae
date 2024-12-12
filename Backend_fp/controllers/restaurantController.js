@@ -1,3 +1,4 @@
+const { Prisma } = require("@prisma/client");
 const prisma = require("../models/prismaClient");
 const bcrypt = require("bcrypt");
 const { parse } = require("dotenv");
@@ -586,33 +587,46 @@ const getQr = async (req, res) => {
     res.status(200).json(qrCode);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Internal Server Error", error: error.message });
-  }
-}
-
-const getOrderId = async (req, res) => {
-  try {
-    const { table_no } = req.params;
-    const order = await prisma.order_table.findFirst({
-      where: { table_no: parseInt(table_no) },
-      select: { order_no: true },
-      orderBy: { order_id: "desc" }
-    });
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-    res.status(200).json({ order });
-  } catch (error) {
-    console.error(error);
     res
       .status(500)
       .json({ message: "Internal Server Error", error: error.message });
   }
-}
+};
+
+const getOrderId = async (req, res) => {
+  try {
+    const { table_no } = req.params;
+
+    const order = await prisma.order_table.findFirst({
+      where: { table_no: parseInt(table_no) }, // Filter by table_no
+      select: {
+        order_items: {
+          select: {
+            order_no: true, 
+          },
+          orderBy: {
+            order_id: 'desc',
+          },
+        },
+      },
+    });
+
+    if (!order || order.order_items.length === 0) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.status(200).json({ order_no: order.order_items[0].order_no });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
 
 const toggle_live = async (req, res) => {
-  try{
-    const { restaurantId, dish_id ,live} = req.body;
+  try {
+    const { restaurantId, dish_id, live } = req.body;
     await prisma.menu_items.update({
       where: {
         dish_id: parseInt(dish_id),
@@ -621,14 +635,78 @@ const toggle_live = async (req, res) => {
       data: { dish_live: live },
     });
     res.status(200).json({ message: "Dish live status updated successfully" });
-  }
-  catch(error){
+  } catch (error) {
     console.error(error);
     res
       .status(500)
       .json({ message: "Internal Server Error", error: error.message });
   }
-}
+};
+const summary = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    if (!restaurantId) {
+      return res.status(400).json({ error: "Restaurant ID is required" });
+    }
+
+    const today = new Date();
+    const yesterday = new Date(today);
+    const tomorrow = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    tomorrow.setDate(today.getDate() + 1);
+    const totalOrders = await prisma.order_items.count({
+      where: {
+        restaurant_id: parseInt(restaurantId),
+        timestamp: {
+          gte: today,
+          lt: tomorrow,
+        },
+      },
+    });
+
+    const totalSalesData = await prisma.payment_table.aggregate({
+      _sum: { amount: true },
+      where: { restaurant_id: parseInt(restaurantId) },
+    });
+    const totalSales = totalSalesData._sum.amount || 0;
+
+    const averageOrder = totalOrders > 0 ? totalSales / totalOrders : 0;
+
+    const yesterdayOrders = await prisma.order_items.count({
+      where: {
+        restaurant_id: parseInt(restaurantId),
+        timestamp: {
+          gte: yesterday,
+          lt: today,
+        },
+      },
+    });
+
+    const percentageIncrease = ((totalOrders - yesterdayOrders) / yesterdayOrders) * 100
+      ;
+
+    const processingOrders = await prisma.order_items.count({
+      where: {
+        restaurant_id: parseInt(restaurantId),
+        order_status: 1,
+      },
+    });
+
+    res.json({
+      totalOrders,
+      totalSales: `₹${totalSales}`,
+      averageOrder: `₹${averageOrder.toFixed(2)}`,
+      percentageIncrease: `${percentageIncrease.toFixed(
+        2
+      )}% more than yesterday`,
+      processingOrders,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+};
 module.exports = {
   createRestaurant,
   loginRestaurant,
@@ -648,5 +726,6 @@ module.exports = {
   postQR,
   getOrderId,
   getQr,
-  toggle_live
+  toggle_live,
+  summary,
 };
