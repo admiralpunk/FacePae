@@ -48,7 +48,7 @@ router.get("/dish/:dishId", authenticateRestaurant, getDish);
 router.get("/order/:orderNo", authenticateRestaurant, getOrder);
 router.post("/payment", authenticateRestaurant, pay);
 router.post("/qr", authenticateRestaurant, upload.single("image"), postQR);
-router.get("/orderid/:table_no", getOrderId);
+router.get("/:table_no", getOrderId);
 router.get("/qr/:restaurantId", getQr);
 router.post("/live",authenticateRestaurant, toggle_live);
 router.get("/hello", (req, res) => {

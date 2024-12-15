@@ -15,7 +15,7 @@ async function emitOrderUpdates(io) {
     where: { order_items: { some: { order_status: 2 } } },
     include: { order_items: true },
   });
-
+  
   io.emit("orderUpdate", { newOrders, preparingOrders, finishedOrders });
 }
 
