@@ -324,7 +324,7 @@ const handleOrder = async (req, res) => {
           order_items: true,
         },
       });
-      await emitOrderUpdates(io);
+      // await emitOrderUpdates(io);
 
 
       return res.status(201).json({
@@ -383,6 +383,7 @@ const updateOrder = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
 // const payment = async (req, res) => {
 //   try {
 //     const { order_id, table_no, payment_type, amount, restaurant_id } =
@@ -729,7 +730,7 @@ const editOrder = async (req, res) => {
   }
 
   try {
-    // Update the order_details
+    
     const updatedOrder = await prisma.order_items.update({
       where: {
         order_id_order_no: {

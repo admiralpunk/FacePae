@@ -21,76 +21,7 @@ async function emitOrderUpdates(io) {
 }
 
 
-const handleOrder = async (req, res) => {
-  const { tableNo, orderDetails, restaurantId } = req.body;
 
-  try {
-    // Check if an existing order exists with order_status 0 or 1
-    const existingOrder = await prisma.order_table.findFirst({
-      where: {
-        table_no: tableNo,
-        restaurant_id: parseInt(restaurantId),
-        order_items: {
-          some: {
-            order_status: {
-              in: [0, 1], // Check for status 0 or 1
-            },
-          },
-        },
-      },
-      orderBy: { order_id: "desc" },
-    });
-    await emitOrderUpdates(io);
-
-    if (!existingOrder) {
-      // Create a new order if no valid existing order is found
-      const newOrder = await prisma.order_table.create({
-        data: {
-          table_no: tableNo,
-          restaurant_id: parseInt(restaurantId),
-          order_items: {
-            create: {
-              order_details: orderDetails,
-              order_status: 0,
-              restaurant_id: parseInt(restaurantId),
-            },
-          },
-        },
-        include: {
-          order_items: true,
-        },
-      });
-
-      await emitOrderUpdates(io);
-
-      return res.status(201).json({
-        message: "Order created successfully",
-        order: newOrder,
-      });
-    }
-
-    // Add new order items to the existing order
-    const updatedOrder = await prisma.order_items.create({
-      data: {
-        order_details: orderDetails,
-        order_status: 0,
-        restaurant_id: parseInt(restaurantId),
-        order_id: existingOrder.order_id,
-      },
-    });
-    await emitOrderUpdates(io);
-
-    res.status(200).json({
-      message: "New order item added successfully",
-      order: updatedOrder,
-    });
-  } catch (error) {
-    console.error("Error handling order:", error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
-  }
-};
 
 async function mergeOrder(order_no, status, order_id, order_details) {
   // Find the existing order with matching ID and status
@@ -162,4 +93,4 @@ async function updateOrderStatus(order_no, status) {
   console.log(`Order No. ${order_no} status updated to ${status}`);
 }
 
-module.exports = { emitOrderUpdates, mergeOrder, updateOrderStatus ,createOrder,handleOrder};
+module.exports = { emitOrderUpdates, mergeOrder, updateOrderStatus ,createOrder};
