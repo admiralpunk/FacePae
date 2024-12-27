@@ -4,7 +4,7 @@ const {
   updateOrderStatus,
   createOrder,
 } = require("../services/orderService");
-
+// const { io } = require("../config/socket");
 async function handleSocketEvents(io, socket) {
   // Emit initial order updates
   await emitOrderUpdates(io);

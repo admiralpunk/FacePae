@@ -16,13 +16,16 @@ const {
   getOrder,
   pay,
   updateOrder,
-  handleOrder,
+  // handleOrder,
   postQR,
   getOrderId,
   getQr,
   toggle_live,
-  summary
+  summary,
+  editOrder
 } = require("../controllers/restaurantController");
+const { handleOrder, updateOrder } = require("../services/orderService");
+const { io } = require('../config/socket'); // Ensure io is imported
 const express = require("express");
 const authenticateRestaurant = require("../middlewares/authMiddleware");
 const router = express.Router();
@@ -39,7 +42,7 @@ router.post(
   addDish
 );
 router.get("/categories/:id", authenticateRestaurant, category_dishes);
-router.post("/post-order", handleOrder);
+router.post("/post-order", (req, res) => handleOrder(req, res, io));
 router.post("/update-order", updateOrder);
 router.get("/image/:imageId", authenticateRestaurant, getImage);
 router.get("/table/:orderId", authenticateRestaurant, getTable);
@@ -54,7 +57,7 @@ router.post("/live",authenticateRestaurant, toggle_live);
 router.get("/hello", (req, res) => {
   res.send("hello");
 });
-
+router.put("/order-details/:orderId/:orderNo", editOrder);
 router.get("/dashboard-summary/:restaurantId", summary);
 
 module.exports = router;

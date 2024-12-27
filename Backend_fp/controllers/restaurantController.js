@@ -3,7 +3,9 @@ const prisma = require("../models/prismaClient");
 const bcrypt = require("bcrypt");
 const { parse } = require("dotenv");
 const jwt = require("jsonwebtoken");
-
+const {
+  emitOrderUpdates
+} = require("../services/orderService");
 const SECRET_KEY = process.env.SECRET_KEY || "your_secret_key_here"; // Secure your key in .env
 
 // Create Restaurant
@@ -322,6 +324,8 @@ const handleOrder = async (req, res) => {
           order_items: true,
         },
       });
+      await emitOrderUpdates(io);
+
 
       return res.status(201).json({
         message: "Order created successfully",
@@ -707,6 +711,49 @@ const summary = async (req, res) => {
     res.status(500).json({ error: "Something went wrong" });
   }
 };
+
+const editOrder = async (req, res) => {
+  const { orderId, orderNo } = req.params;
+  const { order_details, order_status } = req.body;
+
+  // Validate input
+  if (!order_details || !Array.isArray(order_details)) {
+    return res.status(400).json({
+      error: "Invalid or missing order_details. Must be an array of JSON.",
+    });
+  }
+  if (typeof order_status !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid or missing order_status. Must be a number." });
+  }
+
+  try {
+    // Update the order_details
+    const updatedOrder = await prisma.order_items.update({
+      where: {
+        order_id_order_no: {
+          order_id: parseInt(orderId, 10),
+          order_no: parseInt(orderNo, 10),
+        },
+      },
+      data: {
+        order_details: order_details,
+        order_status: order_status,
+      },
+    });
+
+    res.json({ message: "Order details updated successfully", updatedOrder });
+  } catch (error) {
+    console.error(error);
+    if (error.code === "P2025") {
+      return res.status(404).json({ error: "Order not found" });
+    }
+    res
+      .status(500)
+      .json({ error: "An error occurred while updating the order details." });
+  }
+};
 module.exports = {
   createRestaurant,
   loginRestaurant,
@@ -728,4 +775,5 @@ module.exports = {
   getQr,
   toggle_live,
   summary,
+  editOrder
 };

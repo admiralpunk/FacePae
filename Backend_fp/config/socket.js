@@ -1,8 +1,10 @@
 const { Server } = require("socket.io");
 const { handleSocketEvents } = require("../controllers/orders");
 
+const io = new Server();
+
 function setupSocket(server) {
-  const io = new Server(server, {
+  io.listen(server, {
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
@@ -21,4 +23,4 @@ function setupSocket(server) {
   });
 }
 
-module.exports = { setupSocket };
+module.exports = { setupSocket, io };
