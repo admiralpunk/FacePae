@@ -18,6 +18,9 @@ async function handleSocketEvents(io, socket) {
       console.error("Error handling new order:", error);
     }
   });
+  socket.on("requestInitialData", async () => {
+    await emitOrderUpdates(io);
+  });
 
   // Handle "updateOrderStatus" event
   socket.on(

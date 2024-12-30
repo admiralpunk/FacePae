@@ -12,7 +12,7 @@ const SECRET_KEY = process.env.SECRET_KEY || "your_secret_key_here"; // Secure y
 const createRestaurant = async (req, res) => {
   const { name, email, password } = req.body;
 
-  if (!name || !email || !password) {
+  if (!name || !email || !password) { 
     return res.status(400).json({ error: "All fields are required." });
   }
 
@@ -325,7 +325,6 @@ const handleOrder = async (req, res) => {
         },
       });
       // await emitOrderUpdates(io);
-
 
       return res.status(201).json({
         message: "Order created successfully",
