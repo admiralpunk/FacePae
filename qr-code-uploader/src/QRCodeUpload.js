@@ -3,6 +3,7 @@ import axios from "axios";
 
 const QRCodeUpload = () => {
   const [image, setImage] = useState(null);
+  const [uploadedQRCodeUrl, setUploadedQRCodeUrl] = useState(null); // To store the QR code URL
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -11,6 +12,7 @@ const QRCodeUpload = () => {
     setImage(e.target.files[0]);
     setMessage("");
     setError("");
+    setUploadedQRCodeUrl(null); // Clear the displayed QR code when a new file is selected
   };
 
   // Handle form submission
@@ -45,6 +47,11 @@ const QRCodeUpload = () => {
         }
       );
       setMessage(response.data.message || "QR Code uploaded successfully!");
+
+      // Set the uploaded QR code URL (assuming the API returns it)
+      if (response.data.qrCodeUrl) {
+        setUploadedQRCodeUrl(response.data.qrCodeUrl);
+      }
     } catch (err) {
       setError(
         err.response?.data?.error || "An error occurred while uploading."
@@ -70,6 +77,18 @@ const QRCodeUpload = () => {
         </div>
         <button type="submit">Upload</button>
       </form>
+
+      {/* Display the uploaded QR code */}
+      {uploadedQRCodeUrl && (
+        <div style={{ marginTop: "20px" }}>
+          <h2>Uploaded QR Code:</h2>
+          <img
+            src={uploadedQRCodeUrl}
+            alt="Uploaded QR Code"
+            style={{ width: "200px", height: "200px" }}
+          />
+        </div>
+      )}
     </div>
   );
 };
