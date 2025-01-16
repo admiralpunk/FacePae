@@ -1,286 +1,148 @@
-import Sidebar from "../sidebar";
-import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
+import React, { useState, useEffect } from "react";
+import io from "socket.io-client";
+import "./styles.css";
 
-// Socket.IO connection
-const socket = io('http://localhost:3000');
+// Create socket connection outside component to prevent multiple connections
+const socket = io("http://localhost:3000");
 
-// Sidebar Component
-const OrderList = ({ onSelectOrder }) => {
-    const [orders, setOrders] = useState({
-        newOrders: [],
-        inProgressOrders: [],
-        completedOrders: [],
-    });
-
-    useEffect(() => {
-        socket.on('orderUpdate', (data) => {
-            setOrders({
-                newOrders: data.newOrders,
-                inProgressOrders: data.preparingOrders,
-                completedOrders: data.finishedOrders,
-            });
-        });
-
-        return () => {
-            socket.off('orderUpdate');
-        };
-    }, []);
-
-    const handleOrderClick = (order) => {
-        onSelectOrder(order); // Pass the selected order's details to the parent component
-    };
-
-    return (
-        <div className="orders">
-            <h2 className="order-list-title">Order List</h2>
-            <div className="order-section">
-                <h3>New Orders</h3>
-                <div className="new-order-list-container">
-                    {orders.newOrders.map((order) => (
-                        <div key={order.order_id} className='user' onClick={() => handleOrderClick(order)}>
-                            <span>{order.order_id}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="order-section">
-                <h3>In Progress Orders</h3>
-                <div className="new-order-list-container">
-                    {orders.inProgressOrders.map((order) => (
-                        <div key={order.order_id} className='user' onClick={() => handleOrderClick(order)}>
-                            <span>{order.order_id}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="order-section">
-                <h3>Completed Orders</h3>
-                <div className="new-order-list-container">
-                    {orders.completedOrders.map((order) => (
-                        <div key={order.order_id} className='user' onClick={() => handleOrderClick(order)}>
-                            <span>{order.order_id}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// OrderDetails Component
-const OrderDetails = ({ order, onStatusChange }) => {
-    const [orderDetails, setOrderDetails] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    useEffect(() => {
-        const fetchOrderDetails = async () => {
-            if (!order) return;
-            const token = localStorage.getItem('token');
-            setLoading(true);
-            setError(null);
-
-            try {
-                const response = await axios.get(`http://localhost:3000/order/${order.order_id}`,{
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    },
-                });
-                setOrderDetails(response.data); // Assuming the response is an array of dish details
-            } catch (err) {
-                setError('Failed to fetch order details');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchOrderDetails();
-    }, [order]);
-
-    const updateOrderStatus = (orderId, status) => {
-        socket.emit('updateOrderStatus', { orderId, status });
-        onStatusChange(orderId, status);
-    };
-
-    if (loading) return <div>Loading order details...</div>;
-    if (error) return <div>{error}</div>;
-
-    if (!order) return <div>Select an order to view details</div>;
-
-    return (
-        <div className="orderdetails">
-            <h2>Order Details</h2>
-            <p><strong>Order ID:</strong> {order.order_id}</p>
-            <p><strong>Details:</strong>
-                {orderDetails.length > 0 ? (
-                    orderDetails.map((detail, index) => (
-                        <div key={index}>
-                            <p><strong>Dish:</strong> {detail.dish_name}</p>
-                            <p><strong>Quantity:</strong> {detail.quantity}</p>
-                            <p><strong>Customization:</strong> {detail.customization || 'No customization'}</p>
-                        </div>
-                    ))
-                ) : (
-                    <p>No details available for this order.</p>
-                )}
-            </p>
-
-            <button onClick={() => updateOrderStatus(order.order_id, 0)}>Move to New</button>
-            <button onClick={() => updateOrderStatus(order.order_id, 1)}>Move to Preparing</button>
-            <button onClick={() => updateOrderStatus(order.order_id, 2)}>Move to Finished</button>
-        </div>
-    );
-};
-
-// AdminPanel Component (Main Container)
 const Orders = () => {
-    const [selectedOrder, setSelectedOrder] = useState(null);
-    const [orders, setOrders] = useState({
-        newOrders: [],
-        inProgressOrders: [],
-        completedOrders: [],
+  const [newOrders, setNewOrders] = useState([]);
+  const [preparingOrders, setPreparingOrders] = useState([]);
+  const [finishedOrders, setFinishedOrders] = useState([]);
+
+  const updateOrderStatus = (orderNo, status, orderId, orderDetails) => {
+    socket.emit("updateOrderStatus", {
+      order_no: orderNo,
+      status,
+      order_id: orderId,
+      order_details: orderDetails,
     });
+  };
 
-    const handleOrderSelect = (order) => {
-        setSelectedOrder(order);
+  useEffect(() => {
+    // Listen for order updates
+    const handleOrderUpdate = (data) => {
+      setNewOrders(data.newOrders);
+      setPreparingOrders(data.preparingOrders);
+      setFinishedOrders(data.finishedOrders);
     };
 
-    const handleOrderStatusChange = (orderId, newStatus) => {
-        const updatedOrders = { ...orders };
+    socket.on("orderUpdate", handleOrderUpdate);
 
-        // Move the order to the appropriate section based on the new status
-        if (newStatus === 0) {
-            // Move to New
-            const orderToMove = updatedOrders.inProgressOrders.find((order) => order.order_id === orderId) ||
-                updatedOrders.completedOrders.find((order) => order.order_id === orderId);
+    // Set up polling interval
+    const intervalId = setInterval(() => {
+      socket.emit("requestInitialData");
+    }, 5000); // 5000ms = 5 seconds
 
-            if (orderToMove) {
-                updatedOrders.newOrders.push(orderToMove);
-                updatedOrders.inProgressOrders = updatedOrders.inProgressOrders.filter((order) => order.order_id !== orderId);
-                updatedOrders.completedOrders = updatedOrders.completedOrders.filter((order) => order.order_id !== orderId);
-            }
-        } else if (newStatus === 1) {
-            // Move to Preparing
-            const orderToMove = updatedOrders.newOrders.find((order) => order.order_id === orderId);
+    // Initial data request
+    socket.emit("requestInitialData");
 
-            if (orderToMove) {
-                updatedOrders.inProgressOrders.push(orderToMove);
-                updatedOrders.newOrders = updatedOrders.newOrders.filter((order) => order.order_id !== orderId);
-            }
-        } else if (newStatus === 2) {
-            // Move to Finished
-            const orderToMove = updatedOrders.inProgressOrders.find((order) => order.order_id === orderId);
-
-            if (orderToMove) {
-                updatedOrders.completedOrders.push(orderToMove);
-                updatedOrders.inProgressOrders = updatedOrders.inProgressOrders.filter((order) => order.order_id !== orderId);
-            }
-        }
-
-        setOrders(updatedOrders); // Update the orders state
+    // Cleanup socket listeners and interval when component unmounts
+    return () => {
+      socket.off("orderUpdate", handleOrderUpdate);
+      clearInterval(intervalId);
     };
+  }, []); // Remove socket from dependencies array
 
-    return (
-        <>
-            <Sidebar />
-            <OrderList onSelectOrder={handleOrderSelect} />
-            <OrderDetails
-                order={selectedOrder}
-                onStatusChange={handleOrderStatusChange}
-            />
-        </>
-    );
+  return (
+    <div>
+      <h1>Order Panel</h1>
+      <OrderSection
+        title="New Orders"
+        orders={newOrders}
+        reqStatus={0}
+        onUpdateStatus={updateOrderStatus}
+      />
+      <OrderSection
+        title="Preparing Orders"
+        orders={preparingOrders}
+        reqStatus={1}
+        onUpdateStatus={updateOrderStatus}
+      />
+      <OrderSection
+        title="Finished Orders"
+        orders={finishedOrders}
+        reqStatus={2}
+        onUpdateStatus={updateOrderStatus}
+      />
+    </div>
+  );
+};
+
+const OrderSection = ({ title, orders, reqStatus, onUpdateStatus }) => {
+  return (
+    <div className={`order-section ${title.replace(" ", "").toLowerCase()}`}>
+      <h2>{title}</h2>
+      <div className="order-container">
+        {orders.map((order) => (
+          <OrderCard
+            key={order.order_id}
+            order={order}
+            reqStatus={reqStatus}
+            onUpdateStatus={onUpdateStatus}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const OrderCard = ({ order, reqStatus, onUpdateStatus }) => {
+  // Filter order items based on the requested status
+  const filteredItems = order.order_items.filter(
+    (item) => item.order_status === reqStatus
+  );
+
+  if (filteredItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="order-card">
+      <p>
+        <strong>Order ID:</strong> {order.order_id}
+      </p>
+      <div className="order-items">
+        {filteredItems.map((item) => (
+          <div className="order-item" key={item.order_no}>
+            <p>
+              <strong>Item No:</strong> {item.order_no}
+            </p>
+            <p>
+              <strong>Details:</strong> {JSON.stringify(item.order_details)}
+            </p>
+            <p>
+              <strong>Status:</strong> {item.order_status}
+            </p>
+            <button
+              onClick={() =>
+                onUpdateStatus(
+                  item.order_no,
+                  1,
+                  order.order_id,
+                  item.order_details
+                )
+              }
+            >
+              Move to Preparing
+            </button>
+            <button
+              onClick={() =>
+                onUpdateStatus(
+                  item.order_no,
+                  2,
+                  order.order_id,
+                  item.order_details
+                )
+              }
+            >
+              Move to Finished
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 export default Orders;
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import { Link } from "react-router-dom";
-// function Orders() {
-//     return (
-//         <>
-//             <Sidebar />
-//             <div className="orders">
-//                 <h2 className="order-list-title">Order List</h2>
-//                 <div className="new-orders">
-//                     <h5 className="new-title">New</h5>
-//                     <div className="new-order-list-container">
-//                         <Link to='/orderdetails'>
-//                             <div className="user user1">
-//                                 <img src="/pfp1.svg" alt="" />
-//                                 <span className="table-no">05</span>
-//                             </div>
-//                         </Link>
-//                         <div className="user user2">
-//                             <img src="/pfp2.svg" alt="" />
-//                             <span className="table-no">12</span>
-//                         </div>
-//                         <div className="user user3">
-//                             <img src="/pfp3.svg" alt="" />
-//                             <span className="table-no">14</span>
-//                         </div>
-//                     </div>
-//                 </div>
-//                 <div className="in-progress-orders">
-//                     <h5 className="in-progress-title">In Progress</h5>
-//                     <div className="in-progress-order-list-container">
-//                         <div className="user user1">
-//                             <img src="/pfp4.svg" alt="" />
-//                             <span className="table-no" style={{ color: '#BCD0DA' }}>09</span>
-//                         </div>
-//                         <div className="user user2">
-//                             <img src="/pfp3.svg" alt="" />
-//                             <span className="table-no" style={{ color: '#BCD0DA' }}>11</span>
-//                         </div>
-//                     </div>
-//                 </div>
-//                 <div className="completed-orders">
-//                     <h5 className="completed-title">Completed</h5>
-//                     <div className="completed-order-list-container">
-//                         <div className="user user1">
-//                             <img src="/pfp1.svg" alt="" />
-//                             <span className="table-no">06</span>
-//                         </div>
-//                         <div className="user user2">
-//                             <img src="/pfp2.svg" alt="" />
-//                             <span className="table-no">14</span>
-//                         </div>
-//                         <div className="user user3">
-//                             <img src="/pfp3.svg" alt="" />
-//                             <span className="table-no">13</span>
-//                         </div>
-//                         <div className="user user1">
-//                             <img src="/pfp1.svg" alt="" />
-//                             <span className="table-no">02</span>
-//                         </div>
-//                         <div className="user user2">
-//                             <img src="/pfp2.svg" alt="" />
-//                             <span className="table-no">04</span>
-//                         </div>
-//                         <div className="user user3">
-//                             <img src="/pfp3.svg" alt="" />
-//                             <span className="table-no">15</span>
-//                         </div>
-//                     </div>
-//                 </div>
-//             </div>
-//         </>
-//     );
-// }
-
-// export default Orders;
